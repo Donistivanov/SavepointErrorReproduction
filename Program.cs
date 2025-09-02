@@ -1,4 +1,8 @@
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+
+DiagnosticListener.AllListeners.Subscribe(new DiagnosticObserver());
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,4 +45,43 @@ public class Blog
 {
     public int BlogId { get; set; }
     public required string Url { get; set; }
+}
+
+public class DiagnosticObserver : IObserver<DiagnosticListener>
+{
+    public void OnCompleted()
+        => throw new NotImplementedException();
+
+    public void OnError(Exception error)
+        => throw new NotImplementedException();
+
+    public void OnNext(DiagnosticListener value)
+    {
+        if (value.Name == DbLoggerCategory.Name) // "Microsoft.EntityFrameworkCore"
+        {
+            value.Subscribe(new KeyValueObserver());
+        }
+    }
+}
+
+
+public class KeyValueObserver : IObserver<KeyValuePair<string, object?>>
+{
+    public void OnCompleted()
+        => throw new NotImplementedException();
+
+    public void OnError(Exception error)
+        => throw new NotImplementedException();
+
+    public void OnNext(KeyValuePair<string, object?> value)
+    {
+        if (value.Key == RelationalEventId.TransactionError.Name)
+        {
+            if (value.Value is not null)
+            {                
+                var payload = (TransactionErrorEventData)value.Value;
+                Console.WriteLine($"{payload.Exception} ");
+            }
+        }
+    }
 }
